@@ -10,3 +10,9 @@ npm install hardhat@2.22.8 --save-dev
 npx hardhat --version
 npx hardhat
 ```
+
+openzeppelin
+```shell
+npm install @openzeppelin/contracts-upgradeable@latest
+npm install --save-dev @openzeppelin/hardhat-upgrades
+```
