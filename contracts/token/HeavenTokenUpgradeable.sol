@@ -12,6 +12,23 @@ contract HeavenTokenUpgradeable is Initializable, ERC20Upgradeable, OwnableUpgra
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant MINTER_ROLE  = keccak256("MINTER_ROLE");
 
+    struct HVNStorage {
+        uint256 _feeBasicPoints; // 万分比，例如 10 = 0.1%
+        uint256 _maxFee;
+        address _feeRecipient;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("heavenToken.storage.HVN")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant HVNStorageLocation = 0x50cbf6fc8018fbfe33db73a52a271591b3d4c79a138d69fd06280ca6aa8c5900;
+
+    function _getHVNStorage() private pure returns (HVNStorage storage $) {
+        assembly {
+            $.slot := HVNStorageLocation
+        }
+    }
+
+    
+
     constructor() {
         _disableInitializers(); // 防止逻辑合约被初始化
     }
@@ -36,14 +53,33 @@ contract HeavenTokenUpgradeable is Initializable, ERC20Upgradeable, OwnableUpgra
         // 角色层级
         _setRoleAdmin(MINTER_ROLE, MANAGER_ROLE);
         _setRoleAdmin(MANAGER_ROLE, DEFAULT_ADMIN_ROLE);
+
+        HVNStorage storage $ = _getHVNStorage();
+        $._feeBasicPoints = 0;
+        $._maxFee = 0;
+        $._feeRecipient = owner_;
     }
 
     /**
      * @dev UUPS 升级授权
-     * ⚠️ 这是审计重点
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE){
         
+    }
+
+    function feeBasicPoints() public view virtual returns (uint256) {
+        HVNStorage storage $ = _getHVNStorage();
+        return $._feeBasicPoints;
+    }
+
+    function maxFee() public view virtual returns (uint256) {
+        HVNStorage storage $ = _getHVNStorage();
+        return $._maxFee;
+    }
+
+    function feeRecipient() public view virtual returns (address) {
+        HVNStorage storage $ = _getHVNStorage();
+        return $._feeRecipient;
     }
 
     /**
@@ -52,6 +88,36 @@ contract HeavenTokenUpgradeable is Initializable, ERC20Upgradeable, OwnableUpgra
      */
     function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
         _mint(to, amount);
+    }
+
+    /**
+     * @dev 设置税收参数
+     */
+    function setFeeParams(uint256 newBasicPoints, uint256 newMaxFee, address newRecipient) external onlyRole(MANAGER_ROLE) {
+        require(newBasicPoints <= 20, "fee too high");
+        require(newMaxFee <= 50 ether, "max fee too high");
+
+        HVNStorage storage $ = _getHVNStorage();
+        $._feeBasicPoints = newBasicPoints;
+        $._maxFee = newMaxFee;
+        $._feeRecipient = newRecipient;
+    }
+
+    function _update(address from, address to, uint256 amount) internal override {
+        HVNStorage storage $ = _getHVNStorage();
+        if (from == address(0) || to == address(0)) {
+            super._update(from, to, amount);
+            return;
+        }
+        uint256 fee = (amount * $._feeBasicPoints) / 10_000;
+        if (fee > $._maxFee) fee = $._maxFee;
+
+        if (fee > 0) {
+            super._update(from, $._feeRecipient, fee);
+            amount -= fee;
+        }
+
+        super._update(from, to, amount);
     }
 }
 

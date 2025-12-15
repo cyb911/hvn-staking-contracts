@@ -6,11 +6,12 @@ let owner;
 let manager;
 let minter;
 let user;
+let feeRecipient;
 
 const TOKEN_ADDRESS_PROXY = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
 beforeEach(async function () {
-        [owner, manager, minter, user] = await ethers.getSigners();
+        [owner, manager, minter, user, feeRecipient] = await ethers.getSigners();
         token = await ethers.getContractAt(
             "HeavenTokenUpgradeable",
             TOKEN_ADDRESS_PROXY,
@@ -91,4 +92,62 @@ describe("MINT-铸币权限测试", function() {
             expect(await token.balanceOf(user.address))
                 .to.equal(ethers.parseEther("100"));
         });
+});
+
+
+// 收税测试
+describe("TAX-收税测试", function() {
+    it("0 税率转账", async function () {
+        await token.transfer(user.address, ethers.parseEther("100"));
+    
+        expect(await token.balanceOf(user.address)).to.equal(ethers.parseEther("100"))
+    });
+    
+    it.only("有税转账", async function() {
+        await token.setFeeParams(
+            10, // 0.1%
+        ethers.parseEther("50"),
+        feeRecipient.address);
+
+        console.log("\n=== Set Fee Params ===");
+        console.log("feeBasicPoints:", await token.feeBasicPoints());
+        console.log("maxFee:", ethers.formatEther(await token.maxFee()));
+        console.log("feeRecipient:", await token.feeRecipient());
+
+        console.log("\n=== Execute Transfer ===");
+        const tx = await token.transfer(user.address, ethers.parseEther("100"));
+        const receipt = await tx.wait();
+        console.log("\n=== Transfer Logs ===");
+        for (const log of receipt.logs) {
+            try {
+                const parsed = token.interface.parseLog(log);
+                if (parsed.name === "Transfer") {
+                console.log(
+                    `Transfer ${parsed.args.from} -> ${parsed.args.to} : ${ethers.formatEther(parsed.args.value)}`
+                );
+                }
+            } catch {}
+        }
+        
+        console.log("\n=== After Transfer ===");
+        console.log(
+            "owner:",
+            ethers.formatEther(await token.balanceOf(owner.address)));
+
+        console.log(
+            "user:",
+            ethers.formatEther(await token.balanceOf(user.address))
+        );
+
+        console.log(
+            "feeRecipient:",
+            ethers.formatEther(await token.balanceOf(feeRecipient.address))
+        );
+        const userBalance = await token.balanceOf(user.address);
+        const feeBalance = await token.balanceOf(feeRecipient.address);
+        console.log("=== TAX RESULT ===");
+        console.log("User:", ethers.formatUnits(userBalance, 18));
+        console.log("FeeRecipient:", ethers.formatUnits(feeBalance, 18));
+
+    });
 });
