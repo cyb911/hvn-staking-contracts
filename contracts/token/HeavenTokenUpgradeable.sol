@@ -7,7 +7,12 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+import "./IBlacklistPolicy.sol";
+
 contract HeavenTokenUpgradeable is Initializable, ERC20Upgradeable, OwnableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
+    // 黑名单合约接口
+    IBlacklistPolicy public blacklistPolicy;
+
     // 角色定义
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant MINTER_ROLE  = keccak256("MINTER_ROLE");
@@ -67,6 +72,10 @@ contract HeavenTokenUpgradeable is Initializable, ERC20Upgradeable, OwnableUpgra
         
     }
 
+    function setBlacklistPolicy(address policy) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        blacklistPolicy = IBlacklistPolicy(policy);
+    }
+
     function feeBasicPoints() public view virtual returns (uint256) {
         HVNStorage storage $ = _getHVNStorage();
         return $._feeBasicPoints;
@@ -104,6 +113,11 @@ contract HeavenTokenUpgradeable is Initializable, ERC20Upgradeable, OwnableUpgra
     }
 
     function _update(address from, address to, uint256 amount) internal override {
+        // ===== 黑名单 / 风控策略拦截 =====
+        if (address(blacklistPolicy) != address(0)) {
+            require(!blacklistPolicy.isBlocked(from, to),"TRANSFER_BLOCKED_BY_POLICY");
+        }
+
         HVNStorage storage $ = _getHVNStorage();
         if (from == address(0) || to == address(0)) {
             super._update(from, to, amount);
