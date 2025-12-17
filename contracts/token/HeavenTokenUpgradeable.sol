@@ -105,6 +105,7 @@ contract HeavenTokenUpgradeable is Initializable, ERC20Upgradeable, OwnableUpgra
     function setFeeParams(uint256 newBasicPoints, uint256 newMaxFee, address newRecipient) external onlyRole(MANAGER_ROLE) {
         require(newBasicPoints <= 20, "fee too high");
         require(newMaxFee <= 50 ether, "max fee too high");
+        require(newRecipient != address(0), "invalid fee recipient");
 
         HVNStorage storage $ = _getHVNStorage();
         $._feeBasicPoints = newBasicPoints;
