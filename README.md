@@ -16,6 +16,10 @@ openzeppelin
 npm install @openzeppelin/contracts-upgradeable@latest
 npm install --save-dev @openzeppelin/hardhat-upgrades
 ```
+环境变量：dotenv
+```shell
+npm install dotenv --save-dev
+```
 
 启动本地网络
 ```shell
@@ -33,7 +37,11 @@ npx hardhat ignition deploy ignition/modules/HeavenTokenV2Upgrade.js --network l
 ```
 
 测试脚本
-代币测试
+代币测试(sepolia)-基础信息验证
+```shell
+npx hardhat test test/sepolia/base.token.test.js --network sepolia
+```
+
 ```shell
 npx hardhat test test/HeavenToken.test.js --network localhost --grep "BASE"
 ```

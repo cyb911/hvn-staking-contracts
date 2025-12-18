@@ -59,13 +59,4 @@ contract BlacklistPolicyUpgradeable is Initializable, AccessControlUpgradeable,U
 
         return false;
     }
-
-    function isBlocked(address from, address to) external view override returns (bool) {
-        BlacklistStorage storage $ = _getStorage();
-
-        if (from != address(0) && $.blacklisted[from]) return true;
-        if (to != address(0) && $.blacklisted[to]) return true;
-
-        return false;
-    }
 }

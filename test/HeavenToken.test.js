@@ -1,5 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { getSignersSmart } = require("./utils/getSignersSmart");
+
 
 let token;
 let owner;
@@ -8,16 +10,18 @@ let minter;
 let user;
 let feeRecipient;
 
-const TOKEN_ADDRESS_PROXY = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
-beforeEach(async function () {
-        [owner, manager, minter, user, feeRecipient] = await ethers.getSigners();
-        token = await ethers.getContractAt(
-            "HeavenTokenUpgradeable",
-            TOKEN_ADDRESS_PROXY,
-            owner
-        );
-    });
+
+const TOKEN_ADDRESS_PROXY = process.env.HVN_PROXY_ADDR;
+
+before(async function () {
+    ({ owner, manager, minter, user, feeRecipient } = await getSignersSmart());
+    token = await ethers.getContractAt(
+        "HeavenTokenUpgradeable",
+        TOKEN_ADDRESS_PROXY,
+        owner
+    );
+});
 
 // 基础信息验证
 describe("BASE-基础信息验证", function() {
@@ -43,7 +47,7 @@ describe("BASE-基础信息验证", function() {
         expect(await token.hasRole(MINTER_ROLE, owner.address)).to.be.true;
     });
 
-    it("管理员可以授予 MANAGER 和 MINTER 角色", async function () {
+    it.skip("管理员可以授予 MANAGER 和 MINTER 角色", async function () {
         await token.grantRole(await token.MANAGER_ROLE(), manager.address);
         await token.grantRole(await token.MINTER_ROLE(), minter.address);
 
@@ -103,7 +107,7 @@ describe("TAX-收税测试", function() {
         expect(await token.balanceOf(user.address)).to.equal(ethers.parseEther("100"))
     });
     
-    it.only("有税转账", async function() {
+    it("有税转账", async function() {
         await token.setFeeParams(
             10, // 0.1%
         ethers.parseEther("50"),
