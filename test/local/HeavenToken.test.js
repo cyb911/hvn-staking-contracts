@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { getSignersSmart } = require("./utils/getSignersSmart");
+const { getSignersSmart } = require("../utils/getSignersSmart");
 
 
 let token;
